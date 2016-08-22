@@ -97,6 +97,12 @@ func main() {
 	// add the API
 	bleveMappingUI.RegisterHandlers(router, "/api")
 
+	// TODO: better url?
+	// add batching support
+	docsIndexHandler := NewDocsIndexHandler("")
+	docsIndexHandler.IndexNameLookup = indexNameLookup
+	router.Handle("/api/{indexName}/_batch", docsIndexHandler).Methods("PUT")
+
 	createIndexHandler := bleveHttp.NewCreateIndexHandler(*dataDir)
 	createIndexHandler.IndexNameLookup = indexNameLookup
 	router.Handle("/api/{indexName}", createIndexHandler).Methods("PUT")
