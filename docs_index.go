@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"io/ioutil"
 	"net/http"
 	bleveHttp "github.com/blevesearch/bleve/http"
@@ -48,28 +47,30 @@ func (h *DocsIndexHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// parse request body as json
-	var docs []interface{}
+	var docs map[string]interface{}
+
 	err = json.Unmarshal(requestBody, &docs)
 	if err != nil {
 		showError(w, req, fmt.Sprintf("error parsing request body as JSON: %v", err), 400)
 		return
 	}
 
-	for id, doc := range docs {
-		docId := strconv.Itoa(id)
+	batchSize := 1000
+	docCount := 1
+	for docId, doc := range docs {
 		err = batch.Index(docId, doc)
-
-		if (id+1)%1000 == 0 {
-			fmt.Printf("Indexing batch (%d docs)...\n", id+1)
-			err := index.Batch(batch)
-			if err != nil {
-				showError(w, req, fmt.Sprintf("error indexing document: %d: %v", id, err), 500)
-			}
-			batch = index.NewBatch()
-		}
 		if err != nil {
 			showError(w, req, fmt.Sprintf("error indexing document: %s: %v", docId, err), 500)
 		}
+
+		if docCount%batchSize == 0 {
+			err := index.Batch(batch)
+			if err != nil {
+				showError(w, req, fmt.Sprintf("error indexing documents: %v", err), 500)
+			}
+			batch = index.NewBatch()
+		}
+		docCount++;
 	}
 
 
